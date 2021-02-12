@@ -35,9 +35,9 @@ def options(opt):
                    help=('Specify the installed directory of elf-loader'),
                    dest='with_elf_loader', type='string',
                    default=None)
-    opt.add_option('--glibc-install-dir',
+    opt.add_option('--with-glibc',
                    help=('Specify the installed directory of Glibc-2.25'),
-                   dest='glibc_install_dir', type='string',
+                   dest='with_glibc', type='string',
                    default=None)
     opt.add_option('--with-libaspect',
                    help=('Specify the installed directory of libaspect.so'),
@@ -102,7 +102,7 @@ def configure(conf):
 
     conf.load('clang_compilation_database', tooldir=['waf-tools'])
 
-    conf.env.GLIBC_INSTALL_DIR = conf.options.glibc_install_dir
+    conf.env.GLIBC_INSTALL_DIR = conf.options.with_glibc
 
     if Options.options.with_ns3 is not None and os.path.isdir(Options.options.with_ns3):
         conf.env['NS3_DIR']= os.path.abspath(Options.options.with_ns3)
