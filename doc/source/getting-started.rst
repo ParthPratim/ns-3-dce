@@ -34,9 +34,9 @@ First you need to download Bake using Git and set some environment variables:
 
   git clone https://gitlab.com/nsnam/bake.git
   cd bake
-  export PATH=$PATH:`pwd`/build/bin:`pwd`/build/bin_dce
-  export PYTHONPATH=$PYTHONPATH:`pwd`/build/lib
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/build/lib
+  export PATH=${PATH:+:$PATH}`pwd`/build/bin:`pwd`/build/bin_dce
+  export PYTHONPATH=${PYTHONPATH:+:$PYTHONPATH}`pwd`/build/lib
+  export LD_LIBRARY_PATH=`pwd`/build/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
 
 then you can install it using bake:
