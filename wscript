@@ -768,7 +768,7 @@ def build(bld):
         '--sysroot='+SYSROOT,
         '-Wl,--start-group',
         '-Wl,-rpath='+SYSROOT+'/lib64',
-        '-Wl,--dynamic-linker='+SYSROOT+'/lib64/ld-2.25.so'
+        '-Wl,--dynamic-linker='+SYSROOT+'/lib64/ld-2.31.so'
     ]
     bld.env.append_value('LINKFLAGS',extra_cflags_root)
     module_source = module_source + kernel_source
