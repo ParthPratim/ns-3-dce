@@ -168,8 +168,12 @@ def configure(conf):
             Logs.error("Could not find any of the [%s] architecture. Make sure you use the net-next-sim kernel or fix your --enabled-kernel-stack parameter" % ','.join(architectures))
             raise SystemExit(1)
 
-        conf.check(header_name='lkl.h',
-                   includes=os.path.join(kernel_stack_dir, 'include'))
+        if (kernel_stack_dir == Options.options.kernel_stack+architectures[0]):
+            kernel_stack_dir = os.path.join(kernel_stack_dir, "include")
+        else:
+            conf.check(header_name='sim.h',
+                       includes=os.path.join(kernel_stack_dir, 'include'))
+
         conf.env['KERNEL_STACK'] = kernel_stack_dir
         conf.env.append_value ('DEFINES', 'KERNEL_STACK=Y')
 
