@@ -154,7 +154,8 @@ public:
    */
   void ExecOnMain (EventImpl *e);
   EventId ScheduleMain (Time const &time, EventImpl *e);
-
+  void Schedule_Now(void);
+  void SleepOnly(Time timeout);
   bool GetNoSignal ();
 
 private:

@@ -614,6 +614,7 @@ def build(bld):
             'model/linux-socket-fd-factory.cc',
             'model/freebsd-socket-fd-factory.cc',
             'model/linux/linux-socket-impl.cc',
+            'model/dce-host-ops.cc',
             ]
         kernel_headers = [
             'model/kernel-socket-fd-factory.h',
@@ -763,6 +764,7 @@ def build(bld):
 
     SYSROOT = bld.env.GLIBC_INSTALL_DIR
     extra_cflags_root = [
+        '-fpermissive',
         '-L'+SYSROOT+'/usr/lib64',
         '-I'+SYSROOT+'/include',
         '--sysroot='+SYSROOT,
@@ -771,6 +773,7 @@ def build(bld):
         '-Wl,--dynamic-linker='+SYSROOT+'/lib64/ld-2.31.so'
     ]
     bld.env.append_value('LINKFLAGS',extra_cflags_root)
+    bld.env.append_value('CXXFLAGS',['-fpermissive'])
     module_source = module_source + kernel_source
     module_headers = module_headers + kernel_headers
     uselib = ns3waf.modules_uselib(bld, ['core', 'network', 'internet', 'netlink'])

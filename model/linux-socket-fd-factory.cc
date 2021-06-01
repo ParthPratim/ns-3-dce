@@ -1,5 +1,5 @@
 #include "linux-socket-fd-factory.h"
-#include "include/sim-init.h"
+#include "dce_init.h"
 #include "kernel-socket-fd-factory.h"
 #include "loader-factory.h"
 #include "utils.h"
@@ -12,6 +12,7 @@
 
 NS_LOG_COMPONENT_DEFINE ("DceLinuxSocketFdFactory");
 
+
 namespace ns3 {
 NS_OBJECT_ENSURE_REGISTERED (LinuxSocketFdFactory);
 
@@ -22,7 +23,7 @@ LinuxSocketFdFactory::GetTypeId (void)
     .SetParent<KernelSocketFdFactory> ()
     .AddConstructor<LinuxSocketFdFactory> ()
     .AddAttribute ("Library", "File to load in memory",
-                   StringValue ("liblinux.so"),
+                   StringValue ("liblkl.so"),
                    MakeStringAccessor (&KernelSocketFdFactory::m_library),
                    MakeStringChecker ())
   ;
@@ -64,7 +65,7 @@ LinuxSocketFdFactory::NotifyNewAggregate (void)
 void
 LinuxSocketFdFactory::SetTask (std::string path, std::string value)
 {
-  NS_LOG_FUNCTION (path << value);
+  /*NS_LOG_FUNCTION (path << value);
   std::vector<std::pair<std::string,struct SimSysFile *> > files = GetSysFileList ();
   for (uint32_t i = 0; i < files.size (); i++)
     {
@@ -73,10 +74,12 @@ LinuxSocketFdFactory::SetTask (std::string path, std::string value)
           const char *s = value.c_str ();
           int toWrite = value.size ();
           int written;
-          written = m_exported->sys_file_write (files[i].second, s, toWrite, 0);
+          written = m_kernelHandle->sys_file_write (files[i].second, s, toWrite, 0);
           break;
         }
-    }
+    }*/    
+
+    m_kernelHandle->dce_lkl_sysctl (path.c_str(), value.c_str());    
 }
 
 void
@@ -87,7 +90,8 @@ LinuxSocketFdFactory::Set (std::string path, std::string value)
       m_earlySysfs.push_back (std::make_pair (path,value));
     }
   else
-    {
+    {      
+      //LinuxSocketFdFactory::SetTask(path,value);
       KernelSocketFdFactory::ScheduleTask (MakeEvent (&LinuxSocketFdFactory::SetTask, this, path, value));
     }
 }
@@ -95,7 +99,7 @@ LinuxSocketFdFactory::Set (std::string path, std::string value)
 std::string
 LinuxSocketFdFactory::Get (std::string path)
 {
-  NS_LOG_FUNCTION (path);
+  /*NS_LOG_FUNCTION (path);
   std::string ret;
   std::vector<std::pair<std::string,struct SimSysFile *> > files = GetSysFileList ();
   for (uint32_t i = 0; i < files.size (); i++)
@@ -104,12 +108,20 @@ LinuxSocketFdFactory::Get (std::string path)
         {
           char buffer[512];
           memset (buffer, 0, sizeof(buffer));
-          m_exported->sys_file_read (files[i].second, buffer, sizeof(buffer), 0);
+          m_kernelHandle->sys_file_read (files[i].second, buffer, sizeof(buffer), 0);
           NS_LOG_FUNCTION ("sysctl read: " << buffer);
           ret = std::string (buffer);
           break;
         }
     }
+  return ret;*/  
+  std::string ret;
+  char buffer[512]; 
+  memset (buffer, 0, sizeof(buffer));
+  m_loader->NotifyStartExecute ();
+  m_kernelHandle->dce_lkl_sysctl_get (path.c_str(), buffer, sizeof(buffer));
+  m_loader->NotifyEndExecute ();  
+  ret = std::string (buffer);
   return ret;
 }
 
@@ -144,8 +156,8 @@ LinuxSocketFdFactory::GetSysFileList (void)
   iter.head.report_start_dir = &MyIterator::ReportStartDir;
   iter.head.report_end_dir = &MyIterator::ReportEndDir;
   iter.head.report_file = &MyIterator::ReportFile;
-  m_loader->NotifyStartExecute ();
-  m_exported->sys_iterate_files ((struct SimSysIterator *)&iter);
+  m_loader->NotifyStartExecute ();  
+  m_kernelHandle->sys_iterate_files ((struct SimSysIterator *)&iter);
   m_loader->NotifyEndExecute ();
   return iter.m_list;
 }
@@ -165,5 +177,6 @@ LinuxSocketFdFactory::InitializeStack (void)
       m_earlySysfs.pop_front ();
     }
 }
+
 
 } // namespace ns3

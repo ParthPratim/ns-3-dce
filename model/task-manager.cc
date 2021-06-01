@@ -319,6 +319,7 @@ TaskManager::Wakeup (Task *task)
 void
 TaskManager::Sleep (void)
 {
+  NS_LOG_DEBUG("Hemlo 1");
   NS_LOG_FUNCTION (this << m_current);
   NS_ASSERT (m_current != 0);
   NS_ASSERT (m_current->m_state == Task::RUNNING);
@@ -330,10 +331,11 @@ TaskManager::Sleep (void)
 Time
 TaskManager::Sleep (Time timeout)
 {
+  NS_LOG_DEBUG("Hemlo");
   NS_LOG_FUNCTION (this << m_current);
   NS_ASSERT (m_current != 0);
   NS_ASSERT (m_current->m_state == Task::RUNNING);
-  Time expectedEnd = Simulator::Now () + timeout;
+  Time expectedEnd = Simulator::Now () + timeout;  
   Task *current = m_current;
   current->m_state = Task::BLOCKED;
   if (!timeout.IsZero ())
@@ -420,22 +422,25 @@ TaskManager::Schedule (void)
       struct Task *next = m_scheduler->PeekNext ();
       if (next != 0)
         {
-          // and now, we have something to schedule to.
-          NS_LOG_DEBUG ("Leaving main, entering " << next);
+          // and now, we have something to schedule to.          
+          NS_LOG_DEBUG ("Leaving main, entering " << next);                    
           m_scheduler->DequeueNext ();
           m_current = next;
           NS_ASSERT (next->m_state == Task::ACTIVE);
           next->m_state = Task::RUNNING;
           m_delayModel->RecordStart ();
+          NS_LOG_DEBUG("441");
           if (next->m_switchNotifier != 0)
             {
               next->m_switchNotifier (Task::TO, next->m_switchNotifierContext);
             }
+            NS_LOG_DEBUG("437");
 again:
           if (next->m_fiber)
             {
               m_fiberManager->SwitchTo (m_mainFiber, next->m_fiber);
             }
+            
           if (0 != m_todoOnMain)
             {
               m_current = next;
@@ -463,7 +468,7 @@ again:
           // but, we have nothing to schedule to.
         }
       while (m_waitQueue.size () > 0)
-        {
+        {          
           Sleeper s = m_waitQueue.front ();
           s.m_task->m_waitTimer = Simulator::Schedule (s.m_timeout, &TaskManager::EndWait, this, s.m_task);
           m_waitQueue.pop_front ();
@@ -537,6 +542,22 @@ TaskManager::GetStackSize (Task *task) const
 {
   return m_fiberManager->GetStackSize (task->m_fiber);
 }
+
+void TaskManager::Schedule_Now(void){
+  Schedule();
+}
+
+void TaskManager::SleepOnly(Time timeout){
+  Time expectedEnd = Simulator::Now () + timeout;
+  Task *current = m_current;
+  current->m_state = Task::BLOCKED;
+  if (!timeout.IsZero ())
+    {      
+      m_waitQueue.push_back (Sleeper (current,timeout));
+    }
+  NS_LOG_DEBUG("Hemlo");
+}
+
 void
 TaskManager::ExecOnMain (EventImpl *e)
 {

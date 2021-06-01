@@ -1566,4 +1566,13 @@ DceManager::GetVirtualPath () const
 {
   return m_virtualPath;
 }
-} // namespace ns3
+void
+DceManager::Panic ()
+{
+  Ptr<Node> node = GetObject<Node>();
+  NS_ASSERT(node != 0);
+  uint8_t nodeId = node->GetId();
+  NS_LOG_INFO("Kernel Panic. nodeId: " << nodeId);
+  dce_exit(-2);
+}
+}// namespace ns3

@@ -19,7 +19,7 @@ int main (int argc, char *argv[])
 
   DceManagerHelper dceManager;
   dceManager.SetNetworkStack ("ns3::LinuxSocketFdFactory",
-                              "Library", StringValue ("liblinux.so"));
+                              "Library", StringValue ("liblkl.so"));
   dceManager.Install (nodes);
 
   DceApplicationHelper dce;

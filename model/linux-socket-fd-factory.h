@@ -5,11 +5,11 @@
 #include <vector>
 
 extern "C" {
-struct SimExported;
+struct KernelHandle;
 struct SimDevice;
-struct SimSocket;
+struct DceKernel;
 struct SimTask;
-struct SimKernel;
+struct DceKernel;
 struct SimSysFile;
 }
 
@@ -17,17 +17,19 @@ namespace ns3 {
 
 class LinuxSocketFdFactory : public KernelSocketFdFactory
 {
-public:
+public:  
   static TypeId GetTypeId (void);
   LinuxSocketFdFactory ();
   virtual ~LinuxSocketFdFactory ();
 
   void Set (std::string path, std::string value);
+  void call_setup_kernel(void);
   std::string Get (std::string path);
 
 private:
   virtual void NotifyNewAggregate (void);
   void InitializeStack (void);
+  void init_kern_stack(void);
   std::vector<std::pair<std::string,struct SimSysFile *> > GetSysFileList (void);
   void SetTask (std::string path, std::string value);
 
