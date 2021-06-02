@@ -34,8 +34,8 @@
 void lkl_print(const char *str, int len)
 {
 	int ret __attribute__((unused));
-	printf("%s\n",str);
-	//ret = write(STDOUT_FILENO, str, len);
+	//printf("%s\n",str);
+	ret = write(STDOUT_FILENO, str, len);
 }
 
 struct lkl_mutex {
