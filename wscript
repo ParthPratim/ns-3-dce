@@ -92,7 +92,6 @@ def configure(conf):
     cc_string = '.'.join(conf.env['CC_VERSION'])
     conf.msg('Checking for cc version',cc_string,'GREEN')
     conf.load('compiler_cxx')
-    conf.load('command', tooldir=['waf-tools'])
     conf.check_nonfatal = types.MethodType(_check_nonfatal, conf)
     conf.check_compilation_flag = types.MethodType(_check_compilation_flag, conf)
     conf.report_optional_feature = types.MethodType(report_optional_feature, conf)
