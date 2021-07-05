@@ -92,11 +92,13 @@ def configure(conf):
     cc_string = '.'.join(conf.env['CC_VERSION'])
     conf.msg('Checking for cc version',cc_string,'GREEN')
     conf.load('compiler_cxx')
+    conf.load('command', tooldir=['waf-tools'])
     conf.check_nonfatal = types.MethodType(_check_nonfatal, conf)
     conf.check_compilation_flag = types.MethodType(_check_compilation_flag, conf)
     conf.report_optional_feature = types.MethodType(report_optional_feature, conf)
 
     conf.load('clang_compilation_database', tooldir=['waf-tools'])
+    conf.load('command', tooldir=['waf-tools'])
 
     if Options.options.with_ns3 is not None and os.path.isdir(Options.options.with_ns3):
         conf.env['NS3_DIR']= os.path.abspath(Options.options.with_ns3)
@@ -737,6 +739,9 @@ def build(bld):
         'model/process-delay-model.h',
         'model/exec-utils.h',
         'model/utils.h',
+        'model/unix-fd.h',
+        'model/wait-queue.h',
+        'model/process.h',
         'model/linux/linux-ipv4-raw-socket-factory.h',
         'model/linux/linux-ipv6-raw-socket-factory.h',
         'model/linux/linux-udp-socket-factory.h',
