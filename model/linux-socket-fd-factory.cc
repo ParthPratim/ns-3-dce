@@ -64,7 +64,7 @@ LinuxSocketFdFactory::NotifyNewAggregate (void)
 void
 LinuxSocketFdFactory::SetTask (std::string path, std::string value)
 {
-  NS_LOG_FUNCTION (path << value);
+  /*NS_LOG_FUNCTION (path << value);
   std::vector<std::pair<std::string,struct SimSysFile *> > files = GetSysFileList ();
   for (uint32_t i = 0; i < files.size (); i++)
     {
@@ -76,27 +76,21 @@ LinuxSocketFdFactory::SetTask (std::string path, std::string value)
           written = m_exported->sys_file_write (files[i].second, s, toWrite, 0);
           break;
         }
-    }
+    }*/
+    m_exported->lkl_sysctl(path.c_str(),value.c_str());
 }
 
 void
 LinuxSocketFdFactory::Set (std::string path, std::string value)
 {
-  if (m_manager == 0)
-    {
-      m_earlySysfs.push_back (std::make_pair (path,value));
-    }
-  else
-    {
-      KernelSocketFdFactory::ScheduleTask (MakeEvent (&LinuxSocketFdFactory::SetTask, this, path, value));
-    }
+  KernelSocketFdFactory::ScheduleTask (MakeEvent (&LinuxSocketFdFactory::SetTask, this, path, value));
 }
 
 std::string
 LinuxSocketFdFactory::Get (std::string path)
 {
   NS_LOG_FUNCTION (path);
-  std::string ret;
+  /*std::string ret;
   std::vector<std::pair<std::string,struct SimSysFile *> > files = GetSysFileList ();
   for (uint32_t i = 0; i < files.size (); i++)
     {
@@ -109,7 +103,15 @@ LinuxSocketFdFactory::Get (std::string path)
           ret = std::string (buffer);
           break;
         }
-    }
+    }*/
+    
+  char buffer[512];
+	memset (buffer, 0, sizeof(buffer));
+  m_loader->NotifyStartExecute ();
+  m_exported->lkl_sysctl_get(path.c_str(),buffer,sizeof(buffer));  
+  std::string ret(buffer);  
+  m_loader->NotifyEndExecute ();
+
   return ret;
 }
 
