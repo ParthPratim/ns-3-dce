@@ -138,6 +138,7 @@ private:
   void EventTrampoline (void (*fn)(void *context),
                         void *context, void (*pre_fn)(void),
                         Ptr<EventIdHolder> event);
+  void trampoline_task(void (*fn)(void *context) , void * context);
   static void SendMain (bool *r, NetDevice *d, Ptr<Packet> packet, const Address& dest, uint16_t protocolNumber);
 
   std::vector<std::pair<Ptr<NetDevice>,struct SimDevice *> > m_devices;

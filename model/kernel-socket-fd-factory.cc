@@ -262,14 +262,22 @@ KernelSocketFdFactory::Random (struct SimKernel *kernel)
     }
   return u.v;
 }
+void KernelSocketFdFactory::trampoline_task(void (*fn)(void *context),
+                                       void *context)
+{
+  fn(context);
+}                                                                             
+
 void
 KernelSocketFdFactory::EventTrampoline (void (*fn)(void *context),
                                        void *context, void (*pre_fn)(void),
                                        Ptr<EventIdHolder> event)
 {
+  TaskManager *manager = TaskManager::Current ();
   m_loader->NotifyStartExecute ();
   pre_fn ();
-  fn (context);
+  //fn (context);  
+  ScheduleTask( MakeEvent (&KernelSocketFdFactory::trampoline_task , this, fn, context));
   m_loader->NotifyEndExecute ();
 }
 void *
