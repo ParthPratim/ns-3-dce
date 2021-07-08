@@ -18,7 +18,7 @@ jobs :
     runs-on : ubuntu-20.04 # This is ignored, but is a required field so is being set to this
 
     env:
-      BAKE_GIT: 'https://gitlab.com/ParthPratim/bake.git'
+      BAKE_GIT: 'https://gitlab.com/ParthPratim1/bake.git'
       BAKE_BRANCH : 'linux-5.10.47'
       BAKE_CONFIG: 'dce-linux-dev'   # list-type, for each entry, -e {bake_config_entry} ... , will be added
       GIT_HEAD_TRACK : '.git/HEAD'
