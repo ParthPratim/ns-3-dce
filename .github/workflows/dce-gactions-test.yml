@@ -12,7 +12,7 @@ jobs :
           # so had to prefix all commands with sudo, and Github actions like checkout and caching throws permission error
           # [ 'job-name'    , 'docker-image-name' ]
           # [ 'ubuntu-16.04', 'parthpratim27/ns-3-dce:ubuntu-16.04' ]
-          [ 'ubuntu-20.04', 'ns3dce/ubuntu20.04:0.1' ]
+          - [ 'ubuntu-20.04', 'ns3dce/ubuntu20.04:0.1' ]
 
     name : ${{ matrix.job[0] }}
     runs-on : ubuntu-20.04 # This is ignored, but is a required field so is being set to this
@@ -33,7 +33,7 @@ jobs :
       - name: Download Bake 
         run: |
           git clone $BAKE_GIT bake 
-          git checkout $BAKE_BRANCH
+          cd bake && git checkout $BAKE_BRANCH
 
       - name: Configure Bake
         run: ./bake/bake.py configure -e $BAKE_CONFIG      
