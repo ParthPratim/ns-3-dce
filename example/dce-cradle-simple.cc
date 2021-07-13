@@ -36,6 +36,18 @@ bool m_dual = false;
 std::string m_ccid = "2";
 bool m_bulk = false;
 
+static void RunEthtool (Ptr<Node> node, Time at, std::string str)
+{
+  DceApplicationHelper process;
+  ApplicationContainer apps;
+  process.SetBinary ("ethtool");
+  process.SetStackSize (1 << 16);
+  process.ResetArguments ();
+  process.ParseArguments (str.c_str ());
+  apps = process.Install (node);
+  apps.Start (at);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -91,6 +103,20 @@ main (int argc, char *argv[])
   LinuxStackHelper::RunIp (nodes.Get (0), Seconds (0.3), "route show table all");
   LinuxStackHelper::RunIp (nodes.Get (0), Seconds (0.4), "addr list");
   
+  std::string net_devices[] = {
+    "sim0"
+  };
+
+  double initial_time = 0.1,run_time,stats_time=0.3;
+  for(int i = 0 ; i < 2; ++i){
+    for(auto dev : net_devices){
+      run_time = initial_time + (0.1*i);
+      RunEthtool (nodes.Get (i), Seconds (run_time),"--offload  " + dev + "  rx off  tx off");
+      RunEthtool (nodes.Get (i), Seconds (run_time),"-K " + dev + " gso off tx off");
+      RunEthtool (nodes.Get (i), Seconds (stats_time),"-k " + dev);
+    }
+  }
+
   stack.SysctlSet (nodes, ".net.dccp.default.rx_ccid", m_ccid);
   stack.SysctlSet (nodes, ".net.dccp.default.tx_ccid", m_ccid);
 
