@@ -537,6 +537,11 @@ int dce_fputc (int c, FILE *stream)
   NS_LOG_FUNCTION (Current () << UtilsGetNodeId () << c << stream);
   NS_ASSERT (Current () != 0);
   // Note: I don't believe that this function sets errno
+  if(stream == NULL){
+    NS_LOG_DEBUG("NULL Stream : Redirecting to process standard output file");
+    stream = *Current ()->process->pstdout;
+  }
+
   int status = fputc (c, stream);
   return status;
 }
