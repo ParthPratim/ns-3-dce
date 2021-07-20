@@ -55,7 +55,7 @@ ssize_t my_read (void *file, char *buffer, size_t size)
 ssize_t my_write (void *file, const char *buffer, size_t size)
 {  
   struct my_IO_FILE_plus * cookie = (struct my_IO_FILE_plus * )file;  
-  
+
   ssize_t data_written = dce_write (cookie->_fileno, (void *)buffer, size);
   if (data_written == -1)
     {
@@ -192,13 +192,7 @@ FILE * dce_fdopen (int fildes, const char *mode)
   NS_LOG_FUNCTION (Current () << UtilsGetNodeId () << fildes << mode);
   NS_ASSERT (Current () != 0);
   Thread *current = Current ();
-  // no need to create or truncate. Just need to seek if needed.
-  FILE *file = fopen ("/dev/null", mode);
-  if (file == 0)
-    {
-      current->err = errno;
-      return 0;
-    }
+  
   struct my_IO_FILE_plus * fp = (struct my_IO_FILE_plus *)malloc(sizeof(struct my_IO_FILE_plus));
   fp->_fileno=fildes;
   fp->_offset=0;
@@ -209,8 +203,7 @@ FILE * dce_fdopen (int fildes, const char *mode)
     .close = my_close
   };
   FILE * cookie_file = fopencookie(fp,mode,vtable_callbacks);
-  
-  close(file->_fileno);
+
   cookie_file->_fileno = fildes;  
 
   current->process->openStreams.push_back (cookie_file);
@@ -279,18 +272,6 @@ FILE * dce_freopen (const char *path, const char *mode, FILE *stream)
     }
   
   struct my_IO_FILE_plus * fp = (struct my_IO_FILE_plus *)malloc(sizeof(struct my_IO_FILE_plus));
-  fp->_fileno=stream->_fileno;
-  fp->_offset=stream->_offset;
-
-  int oldFd = stream->_fileno;
-  stream->_fileno = -1;
-  stream = freopen ("/dev/null", mode, stream);
-  if (stream == 0)
-    {
-      stream->_fileno = oldFd;
-      current->err = errno;
-      return 0;
-    }
     
   cookie_io_functions_t  vtable_callbacks = {
     .read  = my_read,
@@ -299,22 +280,23 @@ FILE * dce_freopen (const char *path, const char *mode, FILE *stream)
     .close = my_close
   };
 
-  FILE * cookie_file = fopencookie(fp,mode,vtable_callbacks);  
-  cookie_file->_fileno = stream->_fileno;
-  stream = cookie_file;
+  FILE * cookie_file = fopencookie(fp,mode,vtable_callbacks);
   
   int fd = dce_open (path, mode_posix_flags (mode), ~0);
   if (fd == -1)
     {
-      dce_close (oldFd);
-      fclose (stream);
+      fclose(stream);
       current->err = errno;
       return 0;
     }
-  dce_close (oldFd);
-  stream->_fileno = fd;
-  mode_setup (stream, fd, mode);
-  return stream;
+
+  dce_close(stream->_fileno);
+  stream = cookie_file;
+  cookie_file->_fileno = fd;
+  fp->_fileno=fd;
+  fp->_offset=0;
+  mode_setup (cookie_file, fd, mode);
+  return cookie_file;
 }
 int dce_fcloseall (void)
 {
