@@ -37,60 +37,66 @@ struct my_IO_jump_t
 };
 struct my_IO_FILE_plus
 {
-  _IO_FILE file;
-  struct my_IO_jump_t *vtable;
+  //_IO_FILE file;
+  int _fileno;
+  off_t _offset;
 };
 
-ssize_t my_read (_IO_FILE *file, void *buffer, ssize_t size)
+ssize_t my_read (void *file, char *buffer, size_t size)
 {
-  ssize_t data_read = dce_read (file->_fileno, buffer, size);
+  struct my_IO_FILE_plus * cookie = (struct my_IO_FILE_plus * )file;
+  ssize_t data_read = dce_read (cookie->_fileno, (void *)buffer, size);
   if (data_read == -1)
     {
       errno = Current ()->err;
     }
   return data_read;
 }
-ssize_t my_write (_IO_FILE *file, const void *buffer, ssize_t size)
-{
-  ssize_t data_written = dce_write (file->_fileno, buffer, size);
+ssize_t my_write (void *file, const char *buffer, size_t size)
+{  
+  struct my_IO_FILE_plus * cookie = (struct my_IO_FILE_plus * )file;  
+  
+  ssize_t data_written = dce_write (cookie->_fileno, (void *)buffer, size);
   if (data_written == -1)
     {
       errno = Current ()->err;
     }
-  if (file->_offset >= 0)
+  if (cookie->_offset >= 0)
     {
-      file->_offset += data_written;
+      cookie->_offset += data_written;
     }
   return data_written;
 }
-off64_t my_seek (_IO_FILE *file, off64_t where, int whence)
+int my_seek (void *file, off64_t * where, int whence)
 {
-  off64_t result = dce_lseek (file->_fileno, where, whence);
+  struct my_IO_FILE_plus * cookie = (struct my_IO_FILE_plus * )file;
+  int result = dce_lseek (cookie->_fileno, *where, whence);
   if (result == -1)
     {
       errno = Current ()->err;
     }
   return result;
 }
-int my_close (_IO_FILE *file)
+int my_close (void *file)
 {
-  int result = dce_close (file->_fileno);
+  struct my_IO_FILE_plus * cookie = (struct my_IO_FILE_plus * )file;
+  int result = dce_close (cookie->_fileno);
   if (result == -1)
     {
       errno = Current ()->err;
     }
   return result;
 }
-int my_close_unconditional (_IO_FILE *file)
+int my_close_unconditional (void *file)
 {
   return 0;
 }
-int my_write_unconditional (_IO_FILE *file)
+__ssize_t my_write_unconditional (void *file, const char* buff, size_t flags)
 {
   errno = EBADF;
   return -1;
 }
-off64_t my_seek_unconditional (_IO_FILE *file, off64_t where, int whence)
+int my_seek_unconditional (void *file, __off64_t * where, int whence)
 {
   return -1;
 }
@@ -193,21 +199,24 @@ FILE * dce_fdopen (int fildes, const char *mode)
       current->err = errno;
       return 0;
     }
-  struct my_IO_FILE_plus *fp = (struct my_IO_FILE_plus *)file;
-  static struct my_IO_jump_t vtable;
-  memcpy (&vtable, fp->vtable, sizeof(struct my_IO_jump_t));
-  vtable.__read = (void*)my_read;
-  vtable.__write = (void*)my_write;
-  vtable.__seek = (void*)my_seek;
-  vtable.__close = (void*)my_close;
-  vtable.__stat = (void*)my_stat;
-  fp->vtable = &vtable;
-  close (file->_fileno);
-  file->_fileno = fildes;
-  current->process->openStreams.push_back (file);
-  dce_fseek (file, dce_lseek (fildes, 0, SEEK_CUR), SEEK_SET);
+  struct my_IO_FILE_plus * fp = (struct my_IO_FILE_plus *)malloc(sizeof(struct my_IO_FILE_plus));
+  fp->_fileno=fildes;
+  fp->_offset=0;
+  cookie_io_functions_t  vtable_callbacks = {
+    .read  = my_read,
+    .write = my_write,
+    .seek  = my_seek,
+    .close = my_close
+  };
+  FILE * cookie_file = fopencookie(fp,mode,vtable_callbacks);
+  
+  close(file->_fileno);
+  cookie_file->_fileno = fildes;  
 
-  return file;
+  current->process->openStreams.push_back (cookie_file);
+  dce_fseek (cookie_file, dce_lseek (fildes, 0, SEEK_CUR), SEEK_SET);
+
+  return cookie_file;
 }
 
 FILE * dce_fopen64 (const char *path, const char *mode)
@@ -268,6 +277,11 @@ FILE * dce_freopen (const char *path, const char *mode, FILE *stream)
       current->err = EINVAL;
       return 0;
     }
+  
+  struct my_IO_FILE_plus * fp = (struct my_IO_FILE_plus *)malloc(sizeof(struct my_IO_FILE_plus));
+  fp->_fileno=stream->_fileno;
+  fp->_offset=stream->_offset;
+
   int oldFd = stream->_fileno;
   stream->_fileno = -1;
   stream = freopen ("/dev/null", mode, stream);
@@ -277,16 +291,18 @@ FILE * dce_freopen (const char *path, const char *mode, FILE *stream)
       current->err = errno;
       return 0;
     }
-  struct my_IO_FILE_plus *fp = (struct my_IO_FILE_plus *)stream;
-  static struct my_IO_jump_t vtable;
-  memcpy (&vtable, fp->vtable, sizeof(struct my_IO_jump_t));
-  vtable.__read = (void*)my_read;
-  vtable.__write = (void*)my_write;
-  vtable.__seek = (void*)my_seek;
-  vtable.__close = (void*)my_close;
-  vtable.__stat = (void*)my_stat;
-  fp->vtable = &vtable;
+    
+  cookie_io_functions_t  vtable_callbacks = {
+    .read  = my_read,
+    .write = my_write,
+    .seek  = my_seek,
+    .close = my_close
+  };
 
+  FILE * cookie_file = fopencookie(fp,mode,vtable_callbacks);  
+  cookie_file->_fileno = stream->_fileno;
+  stream = cookie_file;
+  
   int fd = dce_open (path, mode_posix_flags (mode), ~0);
   if (fd == -1)
     {
@@ -342,14 +358,18 @@ int dce_fclose_unconditional (FILE *file)
   // Note: it is important here not to call the Current function here
   // because we need to be able to run this function even if there is no context.
   // For example, this is why we have no call to NS_LOG_FUNCTION (Current () ...);
-  struct my_IO_FILE_plus *fp = (struct my_IO_FILE_plus *)file;
-  static struct my_IO_jump_t vtable;
-  memcpy (&vtable, fp->vtable, sizeof(struct my_IO_jump_t));
-  vtable.__close = (void*)my_close_unconditional;
-  vtable.__write = (void*)my_write_unconditional;
-  vtable.__seek = (void*)my_seek_unconditional;
-  fp->vtable = &vtable;
-  fclose (file);
+  struct my_IO_FILE_plus * fp = (struct my_IO_FILE_plus *)malloc(sizeof(struct my_IO_FILE_plus));
+  fp->_fileno=file->_fileno;
+  fp->_offset=file->_offset;
+  cookie_io_functions_t  vtable_callbacks = {
+    .read  = NULL,
+    .write = my_write_unconditional,
+    .seek  = my_seek_unconditional,
+    .close = my_close_unconditional
+  };
+  FILE * cookie_file = fopencookie(fp,"w+",vtable_callbacks);
+  cookie_file->_fileno = file->_fileno;
+  fclose (cookie_file);
   return 0;
 }
 int dce_fclose_onexec (FILE *file)
@@ -357,12 +377,18 @@ int dce_fclose_onexec (FILE *file)
   // Note: it is important here not to call the Current function here
   // because we need to be able to run this function even if there is no context.
   // For example, this is why we have no call to NS_LOG_FUNCTION (Current () ...);
-  struct my_IO_FILE_plus *fp = (struct my_IO_FILE_plus *)file;
-  static struct my_IO_jump_t vtable;
-  memcpy (&vtable, fp->vtable, sizeof(struct my_IO_jump_t));
-  vtable.__close = (void*)my_close_unconditional;
-  fp->vtable = &vtable;
-  fclose (file);
+  struct my_IO_FILE_plus * fp = (struct my_IO_FILE_plus *)malloc(sizeof(struct my_IO_FILE_plus));
+  fp->_fileno=file->_fileno;
+  fp->_offset=file->_offset;
+  cookie_io_functions_t  vtable_callbacks = {
+    .read  = NULL,
+    .write = NULL,
+    .seek  = NULL,
+    .close = my_close_unconditional
+  };
+  FILE * cookie_file = fopencookie(&fp,"w+",vtable_callbacks);  
+  cookie_file->_fileno = file->_fileno;
+  fclose(cookie_file);
   return 0;
 }
 int dce_fclose (FILE *fp)
