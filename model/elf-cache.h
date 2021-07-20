@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <elf.h>
 #include <link.h>
+#include <elf.h>
 #include <vector>
 
 namespace ns3 {
@@ -48,7 +49,8 @@ private:
   std::string EnsureCacheDirectory (void) const;
   unsigned long GetBaseAddress (ElfW (Phdr) * phdr, long phnum) const;
   long GetDtStrTab (ElfW (Dyn) * dyn, long baseAddress) const;
-
+  bool GetElf64Header(FILE * fp, Elf64_Ehdr& elf_header) const;
+  int ErasePieFlag(FILE * fp, Elf64_Ehdr elf_header, std::string filename) const;
 
   std::string m_directory;
   uint32_t m_uid;

@@ -49,6 +49,95 @@ ElfCache::GetBasename (std::string filename) const
   return filename.substr (tmp + 1, filename.size () - (tmp + 1));
 }
 
+bool
+ElfCache::GetElf64Header(FILE * fp, Elf64_Ehdr& elf_header) const
+{
+  bool rvalue=false;
+  size_t  rd_ns = fread(&elf_header, sizeof(elf_header), 1, fp);  
+  if (rd_ns == 1)
+    {
+    rvalue = true;
+    }
+  else
+    {
+      rvalue = false;
+    }
+  return rvalue;
+}
+
+int ElfCache::ErasePieFlag(FILE * fp, Elf64_Ehdr elf_header, std::string filename) const
+{
+  // Check if file identifier begins with ELF tag
+  int ret;
+
+  ret = strncmp((char*)elf_header.e_ident, "\177ELF\002", 5);
+  if(ret != 0){
+    // Not an ELF File, not necessarily an error
+    return 1;
+  }
+
+  // seeking to header table file offset
+  ret = fseek(fp, elf_header.e_shoff, SEEK_SET);  
+  NS_ASSERT_MSG(ret == 0, "There is no section header table in the file" << filename );
+
+  /** 
+   * Iterate over each entry of the section header table
+   *    Read the next section header extry into section_header, 
+   *    where e_shentsize stores size of one entry in the table
+   *    If the section holds dynamic linking data, then,
+   *        seek to the dynamic section from starting of the file, 
+   *        For each dynamic section entry :
+   *            where sh_offset stores distance from SEEK_SET -> This Entry's first byte
+   *            if this member stores Dynamic flags (DT_FLAGS_1)
+   *                unset the DF_1_PIE flag
+   *                fseek back to starting of starting of Dynamic section 
+   *                write ELF data to file
+   *                END
+   * 
+  */
+  
+  Elf64_Shdr section_header;
+  Elf64_Dyn dyn;
+
+  struct stat buffer;
+  for (int i = 0; i < elf_header.e_shnum; ++i)
+    {
+      ret = fread(&section_header, elf_header.e_shentsize, 1, fp);
+      NS_ASSERT_MSG(ret == 1, "Section Header not found in executable file" << filename);
+      if(section_header.sh_type == SHT_DYNAMIC)
+        {
+          ret = fseek(fp, section_header.sh_offset, SEEK_SET);
+          NS_ASSERT_MSG(ret == 0, "Dynamic Linking Data section not found in executable file : " << filename );
+          while(1)
+            {
+              ret = fread(&dyn, sizeof(Elf64_Dyn), 1, fp);
+              
+              if(!(ret == 1))
+                { 
+                  NS_LOG_DEBUG("Could not find Dynamic section entry in executable" << filename);
+                  return 1;
+                }
+              
+              if(dyn.d_tag == DT_FLAGS_1)
+                {                  
+                  dyn.d_un.d_val &= ~DF_1_PIE;                    
+                  /**
+                   * I guess there's no point checking if we can seek back to 
+                   * where we originally came from and if we can write, 
+                   * It should be able to seek back there and write ELF data back
+                  */
+                  fseek(fp, -sizeof(Elf64_Dyn), SEEK_CUR);
+                  fwrite(&dyn, sizeof(Elf64_Dyn), 1, fp);
+                  NS_LOG_DEBUG("Erased DF_1_PIE flag from executable " << filename);
+                  return 0;
+                }
+            }
+        }
+	  }
+  
+  return 1;
+}
+
 void
 ElfCache::CopyFile (std::string source, std::string destination) const
 {
@@ -69,6 +158,17 @@ ElfCache::CopyFile (std::string source, std::string destination) const
     }
   close (src);
   close (dst);
+  
+  Elf64_Ehdr elf_header;
+  FILE * dst_fp = fopen(destination.c_str(),"r+b");
+  if(GetElf64Header(dst_fp,elf_header))  
+    {
+      if(ErasePieFlag(dst_fp, elf_header,destination) == 1)
+      {
+        NS_LOG_DEBUG("The executable is probably not a valid ELF file, or did not have the PIE flag set");
+      }
+    }
+  fclose(dst_fp);
   NS_LOG_DEBUG ("copied " << source << " to " << destination);
 }
 
